@@ -1,0 +1,39 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <header>
+      <h1>LeetCode Tracker</h1>
+      <div id="auth-status" class="muted">…</div>
+    </header>
+
+    <section id="auth-section" hidden>
+      <h2>Sign in</h2>
+      <form id="auth-form">
+        <input type="email" id="auth-email" placeholder="email" autocomplete="email" required />
+        <input type="password" id="auth-password" placeholder="password" autocomplete="current-password" required minlength="6" />
+        <div class="row">
+          <button type="submit" id="signin-btn">Sign in</button>
+          <button type="button" id="signup-btn" class="secondary">Sign up</button>
+        </div>
+        <div id="auth-error" class="error" hidden></div>
+        <div id="auth-info" class="info" hidden></div>
+      </form>
+    </section>
+
+    <section id="current">
+      <h2>Current problem</h2>
+      <div id="current-body" class="muted">No active problem.</div>
+    </section>
+
+    <section id="recent">
+      <h2>Recent attempts</h2>
+      <ul id="recent-list"></ul>
+    </section>
+
+    <script src="popup.js" type="module"></script>
+  </body>
+</html>

@@ -1,0 +1,26 @@
+{
+  "manifest_version": 3,
+  "name": "LeetCode Tracker",
+  "version": "0.2.0",
+  "description": "Tracks time spent and activity on LeetCode problems, with optional cloud sync.",
+  "permissions": ["storage", "alarms"],
+  "host_permissions": [
+    "https://leetcode.com/*",
+    "https://*.supabase.co/*"
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://leetcode.com/problems/*"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "LeetCode Tracker"
+  }
+}

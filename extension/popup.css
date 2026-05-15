@@ -1,0 +1,100 @@
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  width: 320px;
+  font: 13px/1.4 -apple-system, system-ui, Segoe UI, Roboto, sans-serif;
+  color: #1f2328;
+  background: #fff;
+}
+header {
+  padding: 10px 14px;
+  border-bottom: 1px solid #e5e7eb;
+  background: #f9fafb;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+h1 { margin: 0; font-size: 14px; font-weight: 600; }
+section { padding: 12px 14px; border-bottom: 1px solid #f0f1f3; }
+section:last-child { border-bottom: none; }
+h2 {
+  margin: 0 0 8px 0;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #6b7280;
+}
+.muted { color: #9ca3af; }
+.problem-title { font-weight: 600; margin-bottom: 4px; }
+.stats { display: flex; gap: 12px; font-variant-numeric: tabular-nums; }
+.stat { display: flex; flex-direction: column; }
+.stat-value { font-size: 16px; font-weight: 600; }
+.stat-label {
+  font-size: 10px; color: #6b7280;
+  text-transform: uppercase; letter-spacing: 0.04em;
+}
+#recent-list {
+  margin: 0; padding: 0; list-style: none;
+  display: flex; flex-direction: column; gap: 6px;
+}
+#recent-list li {
+  display: flex; justify-content: space-between;
+  font-variant-numeric: tabular-nums;
+}
+#recent-list .slug { color: #1f2328; }
+#recent-list .meta { color: #6b7280; font-size: 11px; }
+
+/* auth */
+#auth-status {
+  font-size: 11px;
+  color: #6b7280;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+#auth-status .signed-in { color: #15803d; }
+#auth-status button {
+  font-size: 11px;
+  padding: 2px 6px;
+  background: transparent;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  cursor: pointer;
+  color: #1f2328;
+}
+#auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+#auth-form input {
+  padding: 6px 8px;
+  font: inherit;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  outline: none;
+}
+#auth-form input:focus { border-color: #6b7280; }
+#auth-form .row { display: flex; gap: 6px; }
+#auth-form button {
+  flex: 1;
+  padding: 6px 10px;
+  font: inherit;
+  font-weight: 600;
+  background: #1f2328;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+#auth-form button.secondary {
+  background: #fff;
+  color: #1f2328;
+  border: 1px solid #d1d5db;
+  font-weight: 500;
+}
+#auth-form button:disabled { opacity: 0.5; cursor: default; }
+.error { color: #b91c1c; font-size: 11px; }
+.info  { color: #15803d; font-size: 11px; }
