@@ -47,7 +47,7 @@ export default function Dashboard({ session }) {
         {tab === "overview" && (
           <>
             <StatsBar summary={sum} streaks={strk} />
-            <ActivityChart series={[{ name: "You", color: "#22c55e", data: dailyActivity(attempts, 30) }]} />
+            <ActivityChart series={[{ name: "You", color: "#ffa116", data: dailyActivity(attempts, 30) }]} />
             <Heatmap data={heatmapData(attempts, 120)} />
             <RecentList attempts={attempts} />
           </>

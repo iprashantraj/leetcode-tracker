@@ -48,6 +48,7 @@ function liveToRecord(live) {
     runCount: live.runCount,
     submitCount: live.submitCount,
     solved: live.solved,
+    solvedAt: live.solvedAt || null,
   };
 }
 
@@ -69,6 +70,7 @@ async function getOrStartAttempt(slug, now, title) {
       runCount: 0,
       submitCount: 0,
       solved: false,
+      solvedAt: null,
     };
     liveAttempts.set(slug, live);
   } else if (title && (live.title === live.slug || !live.title)) {
@@ -124,6 +126,13 @@ async function handle(msg, _sender) {
       break;
     case "SUBMIT":
       live.submitCount += 1;
+      break;
+    case "SUBMIT_RESULT":
+      // Only record the first accepted result for this attempt.
+      if (msg.accepted && !live.solved) {
+        live.solved = true;
+        live.solvedAt = now;
+      }
       break;
   }
   await saveLive();

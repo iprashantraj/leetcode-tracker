@@ -18,15 +18,15 @@ export default function Heatmap({ data }) {
     weeks.push(cells.slice(i, i + 7));
   }
 
-  // Color scale based on minutes spent.
+  // Color scale based on minutes spent (LeetCode green ramp on dark bg).
   const colorFor = (sec) => {
     const m = (sec || 0) / 60;
-    if (m === 0) return "#eef0f3";
-    if (m < 5) return "#bbf7d0";
-    if (m < 15) return "#86efac";
-    if (m < 45) return "#4ade80";
-    if (m < 90) return "#22c55e";
-    return "#15803d";
+    if (m === 0) return "#2a2a2a";
+    if (m < 5) return "#0e4429";
+    if (m < 15) return "#006d32";
+    if (m < 45) return "#26a641";
+    if (m < 90) return "#39d353";
+    return "#46f463";
   };
 
   return (
@@ -53,7 +53,7 @@ export default function Heatmap({ data }) {
         </div>
         <div className="heatmap-legend">
           <span>Less</span>
-          {["#eef0f3", "#bbf7d0", "#86efac", "#4ade80", "#22c55e", "#15803d"].map((c, i) => (
+          {["#2a2a2a", "#0e4429", "#006d32", "#26a641", "#39d353", "#46f463"].map((c, i) => (
             <span key={i} className="heatmap-cell" style={{ background: c, width: 10, height: 10 }} />
           ))}
           <span>More</span>

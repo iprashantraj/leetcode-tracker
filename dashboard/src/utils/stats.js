@@ -42,15 +42,18 @@ export function summary(attempts) {
   let totalSeconds = 0;
   let totalSubmits = 0;
   const slugs = new Set();
+  const solvedSlugs = new Set();
   for (const a of attempts) {
     totalSeconds += a.active_seconds || 0;
     totalSubmits += a.submit_count || 0;
     slugs.add(a.problem_slug);
+    if (a.solved) solvedSlugs.add(a.problem_slug);
   }
   return {
     totalSeconds,
     totalSubmits,
     problems: slugs.size,
+    solved: solvedSlugs.size,
     attempts: attempts.length,
   };
 }

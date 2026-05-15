@@ -5,7 +5,7 @@ import Leaderboard, { rowFromAttempts } from "../components/Leaderboard";
 import ActivityChart from "../components/ActivityChart";
 import { dailyActivity } from "../utils/stats";
 
-const COLORS = ["#22c55e", "#3b82f6", "#f97316", "#a855f7", "#ec4899", "#14b8a6"];
+const COLORS = ["#ffa116", "#00b8a3", "#3b82f6", "#a855f7", "#ef4743", "#ffc01e"];
 
 function Section({ title, children }) {
   return (

@@ -91,7 +91,55 @@ function onClickCapture(e) {
   const btn = e.target.closest("button");
   if (!btn) return;
   const kind = classifyButton(btn);
-  if (kind) send(kind);
+  if (kind) {
+    send(kind);
+    if (kind === "SUBMIT") startVerdictWatch();
+  }
+}
+
+// After a Submit, watch the DOM for the verdict text. LeetCode renders the
+// result in a panel that appears shortly after the submission completes.
+const VERDICTS = [
+  "Accepted",
+  "Wrong Answer",
+  "Time Limit Exceeded",
+  "Memory Limit Exceeded",
+  "Runtime Error",
+  "Compile Error",
+  "Output Limit Exceeded",
+];
+
+let verdictObserver = null;
+let verdictTimer = null;
+
+function cleanupVerdictWatch() {
+  if (verdictObserver) verdictObserver.disconnect();
+  verdictObserver = null;
+  if (verdictTimer) clearTimeout(verdictTimer);
+  verdictTimer = null;
+}
+
+function startVerdictWatch() {
+  cleanupVerdictWatch();
+  verdictObserver = new MutationObserver(mutations => {
+    for (const m of mutations) {
+      for (const node of m.addedNodes) {
+        if (node.nodeType !== Node.ELEMENT_NODE) continue;
+        const text = (node.textContent || "").trim();
+        if (!text) continue;
+        for (const v of VERDICTS) {
+          // Match on a short fragment so we don't catch unrelated long text.
+          if (text.length < 2000 && text.includes(v)) {
+            send("SUBMIT_RESULT", { verdict: v, accepted: v === "Accepted" });
+            cleanupVerdictWatch();
+            return;
+          }
+        }
+      }
+    }
+  });
+  verdictObserver.observe(document.body, { childList: true, subtree: true });
+  verdictTimer = setTimeout(cleanupVerdictWatch, 60_000);
 }
 
 // Keyboard shortcuts: Ctrl/Cmd+Enter = Run, Ctrl/Cmd+Shift+Enter = Submit.
@@ -99,7 +147,7 @@ function onClickCapture(e) {
 function onKeyDown(e) {
   if (e.key !== "Enter") return;
   if (!(e.ctrlKey || e.metaKey)) return;
-  if (e.shiftKey) send("SUBMIT");
+  if (e.shiftKey) { send("SUBMIT"); startVerdictWatch(); }
   else send("RUN");
 }
 

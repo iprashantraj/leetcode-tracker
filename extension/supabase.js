@@ -130,6 +130,7 @@ export async function syncAttempts(records) {
       run_count: r.runCount || 0,
       submit_count: r.submitCount || 0,
       solved: !!r.solved,
+      solved_at: r.solvedAt ? new Date(r.solvedAt).toISOString() : null,
     }));
   if (!rows.length) return;
   await api("/rest/v1/attempts?on_conflict=id", {
