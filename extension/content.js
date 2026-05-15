@@ -93,7 +93,8 @@ function onClickCapture(e) {
   const kind = classifyButton(btn);
   if (kind) {
     send(kind);
-    if (kind === "SUBMIT") startVerdictWatch();
+    if (kind === "SUBMIT") startVerdictWatch("SUBMIT_RESULT");
+    else if (kind === "RUN") startVerdictWatch("RUN_RESULT");
   }
 }
 
@@ -119,7 +120,7 @@ function cleanupVerdictWatch() {
   verdictTimer = null;
 }
 
-function startVerdictWatch() {
+function startVerdictWatch(resultType) {
   cleanupVerdictWatch();
   verdictObserver = new MutationObserver(mutations => {
     for (const m of mutations) {
@@ -130,7 +131,7 @@ function startVerdictWatch() {
         for (const v of VERDICTS) {
           // Match on a short fragment so we don't catch unrelated long text.
           if (text.length < 2000 && text.includes(v)) {
-            send("SUBMIT_RESULT", { verdict: v, accepted: v === "Accepted" });
+            send(resultType, { verdict: v, accepted: v === "Accepted" });
             cleanupVerdictWatch();
             return;
           }
@@ -147,8 +148,8 @@ function startVerdictWatch() {
 function onKeyDown(e) {
   if (e.key !== "Enter") return;
   if (!(e.ctrlKey || e.metaKey)) return;
-  if (e.shiftKey) { send("SUBMIT"); startVerdictWatch(); }
-  else send("RUN");
+  if (e.shiftKey) { send("SUBMIT"); startVerdictWatch("SUBMIT_RESULT"); }
+  else { send("RUN"); startVerdictWatch("RUN_RESULT"); }
 }
 
 // LeetCode is an SPA — detect URL changes without a full page reload.

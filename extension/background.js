@@ -1,6 +1,6 @@
 // Service worker — authoritative state for attempts, persistence, and Supabase sync.
 
-import { syncAttempts, isSignedIn } from "./supabase.js";
+import { syncAttempts, syncEvents, isSignedIn } from "./supabase.js";
 
 const SESSION_GAP_MS = 30 * 60 * 1000;     // 30 min idle → finalize the attempt
 const LIVE_SYNC_ALARM = "live-sync";
@@ -8,20 +8,23 @@ const LIVE_SYNC_ALARM = "live-sync";
 // slug -> live attempt
 const liveAttempts = new Map();
 
+// Unsynced event log. Each entry: { id, attemptId, slug, eventType, occurredAt, metadata, synced }.
+let eventBuffer = [];
+
 // Single shared promise — every entry point awaits this so we never operate
 // on an empty in-memory map after a service-worker restart.
 let loadPromise = null;
 async function _doLoad() {
-  const { __live } = await chrome.storage.local.get("__live");
+  const { __live, __events } = await chrome.storage.local.get(["__live", "__events"]);
   if (__live) {
     let migrated = false;
     for (const [k, v] of Object.entries(__live)) {
-      // Migrate v0.1 data which didn't have client-side ids.
       if (!v.id) { v.id = crypto.randomUUID(); migrated = true; }
       liveAttempts.set(k, v);
     }
     if (migrated) await saveLive();
   }
+  if (Array.isArray(__events)) eventBuffer = __events;
 }
 function ensureLoaded() {
   if (!loadPromise) loadPromise = _doLoad();
@@ -32,6 +35,9 @@ async function saveLive() {
   const obj = {};
   for (const [k, v] of liveAttempts.entries()) obj[k] = v;
   await chrome.storage.local.set({ __live: obj });
+}
+async function saveEvents() {
+  await chrome.storage.local.set({ __events: eventBuffer });
 }
 
 function attemptKey(id) { return `attempt:${id}`; }
@@ -50,6 +56,18 @@ function liveToRecord(live) {
     solved: live.solved,
     solvedAt: live.solvedAt || null,
   };
+}
+
+function pushEvent(attemptId, slug, eventType, occurredAt, metadata = {}) {
+  eventBuffer.push({
+    id: crypto.randomUUID(),
+    attemptId,
+    slug,
+    eventType,
+    occurredAt,
+    metadata,
+    synced: false,
+  });
 }
 
 async function getOrStartAttempt(slug, now, title) {
@@ -74,7 +92,6 @@ async function getOrStartAttempt(slug, now, title) {
     };
     liveAttempts.set(slug, live);
   } else if (title && (live.title === live.slug || !live.title)) {
-    // Upgrade slug-as-title to a real title once it becomes available.
     live.title = title;
   }
   return live;
@@ -91,8 +108,6 @@ async function flushAttempt(slug) {
   await chrome.storage.local.set({ [attemptKey(record.id)]: record });
   liveAttempts.delete(slug);
   await saveLive();
-  // Fire-and-forget sync. If it fails, the periodic alarm will retry unsynced
-  // records via syncPendingFlushed().
   syncAttempts([record]).catch(err => console.warn("[tracker] flush sync failed:", err.message));
 }
 
@@ -123,16 +138,35 @@ async function handle(msg, _sender) {
       break;
     case "RUN":
       live.runCount += 1;
+      pushEvent(live.id, live.slug, "run", now);
+      await saveEvents();
       break;
     case "SUBMIT":
       live.submitCount += 1;
+      pushEvent(live.id, live.slug, "submit", now);
+      await saveEvents();
+      break;
+    case "RUN_RESULT":
+      pushEvent(
+        live.id, live.slug,
+        msg.accepted ? "run_accepted" : "run_rejected",
+        now,
+        { verdict: msg.verdict || null }
+      );
+      await saveEvents();
       break;
     case "SUBMIT_RESULT":
-      // Only record the first accepted result for this attempt.
       if (msg.accepted && !live.solved) {
         live.solved = true;
         live.solvedAt = now;
       }
+      pushEvent(
+        live.id, live.slug,
+        msg.accepted ? "submit_accepted" : "submit_rejected",
+        now,
+        { verdict: msg.verdict || null }
+      );
+      await saveEvents();
       break;
   }
   await saveLive();
@@ -140,13 +174,29 @@ async function handle(msg, _sender) {
 
 async function syncLiveAttempts() {
   await ensureLoaded();
-  if (!liveAttempts.size) return;
   if (!(await isSignedIn())) return;
-  const records = Array.from(liveAttempts.values()).map(liveToRecord);
+  // Attempts first so events can reference an existing attempt id.
+  if (liveAttempts.size) {
+    const records = Array.from(liveAttempts.values()).map(liveToRecord);
+    try {
+      await syncAttempts(records);
+    } catch (e) {
+      console.warn("[tracker] live sync failed:", e.message);
+      return; // don't push events if attempts failed
+    }
+  }
+  const unsynced = eventBuffer.filter(e => !e.synced);
+  if (unsynced.length === 0) return;
   try {
-    await syncAttempts(records);
+    await syncEvents(unsynced);
+    for (const e of unsynced) e.synced = true;
+    // Keep only the last 100 synced events to bound storage.
+    eventBuffer = eventBuffer.filter(e => !e.synced).concat(
+      eventBuffer.filter(e => e.synced).slice(-100)
+    );
+    await saveEvents();
   } catch (e) {
-    console.warn("[tracker] live sync failed:", e.message);
+    console.warn("[tracker] event sync failed:", e.message);
   }
 }
 

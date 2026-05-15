@@ -143,4 +143,32 @@ export async function syncAttempts(records) {
   });
 }
 
+// Bulk-insert event rows. Events are append-only — duplicates are avoided
+// client-side via the `synced` flag in background.js.
+export async function syncEvents(events) {
+  if (!events.length) return;
+  const token = await accessToken();
+  if (!token) return;
+  const s = await getSession();
+  const rows = events
+    .filter(e => e && e.attemptId && e.eventType && e.occurredAt)
+    .map(e => ({
+      user_id: s.user.id,
+      attempt_id: e.attemptId,
+      problem_slug: e.slug,
+      event_type: e.eventType,
+      occurred_at: new Date(e.occurredAt).toISOString(),
+      metadata: e.metadata || {},
+    }));
+  if (!rows.length) return;
+  await api("/rest/v1/events", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      Prefer: "return=minimal",
+    },
+    body: JSON.stringify(rows),
+  });
+}
+
 export const isConfigured = configured;
