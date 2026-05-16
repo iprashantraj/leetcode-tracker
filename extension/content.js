@@ -152,8 +152,13 @@ function onKeyDown(e) {
   if (e.key !== "Enter") return;
   if (!(e.ctrlKey || e.metaKey)) return;
   const now = Date.now();
-  if (now - lastShortcutAt < 250) return;
+  if (now - lastShortcutAt < 250) {
+    console.log("[tracker] shortcut deduped");
+    return;
+  }
   lastShortcutAt = now;
+  const which = e.shiftKey ? "SUBMIT" : "RUN";
+  console.log("[tracker] shortcut fired:", which, "slug:", currentSlug, "target:", e.target?.tagName);
   if (e.shiftKey) { send("SUBMIT"); startVerdictWatch("SUBMIT_RESULT"); }
   else { send("RUN"); startVerdictWatch("RUN_RESULT"); }
 }
@@ -215,6 +220,7 @@ function watchTitle() {
 }
 
 function init() {
+  console.log("[tracker] content script loaded on", location.href);
   currentSlug = getSlugFromUrl();
   if (currentSlug) {
     send("PROBLEM_OPEN", { title: cleanTitle() });
