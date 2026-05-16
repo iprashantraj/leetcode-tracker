@@ -3,7 +3,7 @@
   "name": "LeetCode Tracker",
   "version": "0.3.0",
   "description": "Tracks time spent and activity on LeetCode problems, with cloud sync and a social dashboard.",
-  "permissions": ["storage", "alarms"],
+  "permissions": ["storage", "alarms", "webRequest", "tabs"],
   "host_permissions": [
     "https://leetcode.com/*",
     "https://*.supabase.co/*"

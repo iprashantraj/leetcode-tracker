@@ -205,6 +205,35 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   return true;
 });
 
+// Source of truth for Run / Submit detection: watch LeetCode's network calls.
+// This works regardless of which keyboard shortcut or button the user used.
+const RUN_URL_RE = /leetcode\.com\/problems\/([^/]+)\/interpret_solution\/?$/;
+const SUBMIT_URL_RE = /leetcode\.com\/problems\/([^/]+)\/submit\/?$/;
+
+chrome.webRequest.onBeforeRequest.addListener(
+  (details) => {
+    if (details.method !== "POST") return;
+    if (details.tabId < 0) return;
+    let action = null, m;
+    if ((m = RUN_URL_RE.exec(details.url))) action = "RUN";
+    else if ((m = SUBMIT_URL_RE.exec(details.url))) action = "SUBMIT";
+    if (!action) return;
+    const slug = m[1];
+    const ts = Date.now();
+    console.log("[tracker] network", action, slug);
+    handle({ type: action, slug, ts });
+    // Ask the page's content script to start watching the DOM for the verdict.
+    chrome.tabs.sendMessage(details.tabId, {
+      type: "START_VERDICT_WATCH",
+      resultType: action === "SUBMIT" ? "SUBMIT_RESULT" : "RUN_RESULT",
+    }).catch(() => { /* tab may not have the content script — fine */ });
+  },
+  { urls: [
+    "https://leetcode.com/problems/*/interpret_solution/",
+    "https://leetcode.com/problems/*/submit/",
+  ] }
+);
+
 chrome.runtime.onStartup.addListener(ensureLoaded);
 chrome.runtime.onInstalled.addListener(ensureLoaded);
 

@@ -65,38 +65,15 @@ function onBlur() {
   blurTimer = setTimeout(() => setActive(false, "window-blur"), BLUR_GRACE_MS);
 }
 
-// Detect Run / Submit. The Run button is often icon-only (no visible text),
-// so we check multiple signals: visible text, aria-label, title, data-e2e-locator,
-// and presence of an SVG play icon. Submit is usually labelled outright.
-function classifyButton(btn) {
-  const text = (btn.innerText || btn.textContent || "").trim().toLowerCase();
-  const aria = (btn.getAttribute("aria-label") || "").toLowerCase();
-  const title = (btn.getAttribute("title") || "").toLowerCase();
-  const locator = (btn.getAttribute("data-e2e-locator") || "").toLowerCase();
-  const combined = `${text} ${aria} ${title} ${locator}`;
 
-  if (/\bsubmit\b/.test(combined)) return "SUBMIT";
-  if (/\brun\b/.test(combined)) return "RUN";
-
-  // Icon-only Run button: look for a "play" SVG. The Run button on LeetCode
-  // is typically the only icon-only button near the editor — keep this loose.
-  if (!text && btn.querySelector("svg")) {
-    const cls = (btn.className || "") + " " + (btn.querySelector("svg")?.getAttribute("class") || "");
-    if (/play|run/i.test(cls)) return "RUN";
+// Listen for the service worker telling us a network request happened (Run /
+// Submit detected via webRequest). When that comes in, start watching the DOM
+// for the verdict text.
+chrome.runtime.onMessage.addListener((msg) => {
+  if (msg?.type === "START_VERDICT_WATCH") {
+    startVerdictWatch(msg.resultType);
   }
-  return null;
-}
-
-function onClickCapture(e) {
-  const btn = e.target.closest("button");
-  if (!btn) return;
-  const kind = classifyButton(btn);
-  if (kind) {
-    send(kind);
-    if (kind === "SUBMIT") startVerdictWatch("SUBMIT_RESULT");
-    else if (kind === "RUN") startVerdictWatch("RUN_RESULT");
-  }
-}
+});
 
 // After a Submit, watch the DOM for the verdict text. LeetCode renders the
 // result in a panel that appears shortly after the submission completes.
@@ -141,37 +118,6 @@ function startVerdictWatch(resultType) {
   });
   verdictObserver.observe(document.body, { childList: true, subtree: true });
   verdictTimer = setTimeout(cleanupVerdictWatch, 60_000);
-}
-
-// Keyboard shortcuts: Ctrl/Cmd+Enter = Run, Ctrl/Cmd+Shift+Enter = Submit.
-// Most LeetCode regulars use these instead of clicking.
-// Dedupe — multiple listeners (window + document + editor) may fire for the
-// same physical keypress. We collapse events arriving within 250 ms.
-// LeetCode shortcut bindings can be customized per user. This config matches
-// the keys the LeetCode UI actually fires. Default LeetCode has Ctrl+Enter = Run
-// and no Submit shortcut; this user (and many others) customizes them.
-// TODO: expose this in an extension settings page so non-default users can
-// configure their own mappings.
-const SHORTCUT_MAP = [
-  // Submit: Ctrl/Cmd + Enter (or legacy Ctrl+Shift+Enter)
-  { match: e => e.key === "Enter" && (e.ctrlKey || e.metaKey), action: "SUBMIT" },
-  // Run: Ctrl/Cmd + '
-  { match: e => e.key === "'" && (e.ctrlKey || e.metaKey), action: "RUN" },
-];
-
-let lastShortcutAt = 0;
-function onKeyDown(e) {
-  const hit = SHORTCUT_MAP.find(s => s.match(e));
-  if (!hit) return;
-  const now = Date.now();
-  if (now - lastShortcutAt < 250) {
-    console.log("[tracker] shortcut deduped");
-    return;
-  }
-  lastShortcutAt = now;
-  console.log("[tracker] shortcut fired:", hit.action, "slug:", currentSlug, "target:", e.target?.tagName);
-  send(hit.action);
-  startVerdictWatch(hit.action === "SUBMIT" ? "SUBMIT_RESULT" : "RUN_RESULT");
 }
 
 // LeetCode is an SPA — detect URL changes without a full page reload.
@@ -245,30 +191,9 @@ function init() {
   document.addEventListener("visibilitychange", onVisibilityChange);
   window.addEventListener("focus", onFocus);
   window.addEventListener("blur", onBlur);
-  document.addEventListener("click", onClickCapture, true);
-  // Multiple keydown listeners — Monaco editor sometimes consumes the event
-  // before document-level capture fires, so we also listen on window (which
-  // gets the event even earlier) and re-attach to the editor element as it
-  // mounts.
-  window.addEventListener("keydown", onKeyDown, true);
-  document.addEventListener("keydown", onKeyDown, true);
-  attachEditorKeyListener();
+  // Run/Submit detection now lives in the service worker (background.js)
+  // via chrome.webRequest — works for any keyboard shortcut or button click.
   watchUrlChanges();
-}
-
-function attachEditorKeyListener() {
-  // Re-bind onto Monaco's text input whenever it appears (it's re-created
-  // when LeetCode switches problems or languages).
-  let bound = null;
-  const tryBind = () => {
-    const ta = document.querySelector(".monaco-editor textarea, .monaco-editor [role='textbox']");
-    if (ta && ta !== bound) {
-      ta.addEventListener("keydown", onKeyDown, true);
-      bound = ta;
-    }
-  };
-  tryBind();
-  new MutationObserver(tryBind).observe(document.body, { childList: true, subtree: true });
 }
 
 init();
