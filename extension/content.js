@@ -145,9 +145,15 @@ function startVerdictWatch(resultType) {
 
 // Keyboard shortcuts: Ctrl/Cmd+Enter = Run, Ctrl/Cmd+Shift+Enter = Submit.
 // Most LeetCode regulars use these instead of clicking.
+// Dedupe — multiple listeners (window + document + editor) may fire for the
+// same physical keypress. We collapse events arriving within 250 ms.
+let lastShortcutAt = 0;
 function onKeyDown(e) {
   if (e.key !== "Enter") return;
   if (!(e.ctrlKey || e.metaKey)) return;
+  const now = Date.now();
+  if (now - lastShortcutAt < 250) return;
+  lastShortcutAt = now;
   if (e.shiftKey) { send("SUBMIT"); startVerdictWatch("SUBMIT_RESULT"); }
   else { send("RUN"); startVerdictWatch("RUN_RESULT"); }
 }
@@ -223,8 +229,29 @@ function init() {
   window.addEventListener("focus", onFocus);
   window.addEventListener("blur", onBlur);
   document.addEventListener("click", onClickCapture, true);
+  // Multiple keydown listeners — Monaco editor sometimes consumes the event
+  // before document-level capture fires, so we also listen on window (which
+  // gets the event even earlier) and re-attach to the editor element as it
+  // mounts.
+  window.addEventListener("keydown", onKeyDown, true);
   document.addEventListener("keydown", onKeyDown, true);
+  attachEditorKeyListener();
   watchUrlChanges();
+}
+
+function attachEditorKeyListener() {
+  // Re-bind onto Monaco's text input whenever it appears (it's re-created
+  // when LeetCode switches problems or languages).
+  let bound = null;
+  const tryBind = () => {
+    const ta = document.querySelector(".monaco-editor textarea, .monaco-editor [role='textbox']");
+    if (ta && ta !== bound) {
+      ta.addEventListener("keydown", onKeyDown, true);
+      bound = ta;
+    }
+  };
+  tryBind();
+  new MutationObserver(tryBind).observe(document.body, { childList: true, subtree: true });
 }
 
 init();
