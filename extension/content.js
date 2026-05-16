@@ -66,13 +66,17 @@ function onBlur() {
 }
 
 
-// Listen for the service worker telling us a network request happened (Run /
-// Submit detected via webRequest). When that comes in, start watching the DOM
-// for the verdict text.
-chrome.runtime.onMessage.addListener((msg) => {
-  if (msg?.type === "START_VERDICT_WATCH") {
-    startVerdictWatch(msg.resultType);
-  }
+// Listen for postMessage from page-hook.js (runs in main world, hooks the
+// page's window.fetch / XHR). When LeetCode fires its Run/Submit network
+// call we get notified here, forward to background, and start watching the
+// DOM for the verdict text.
+window.addEventListener("message", (event) => {
+  if (event.source !== window) return;
+  const data = event.data;
+  if (!data || data.source !== "leetcode-tracker") return;
+  if (data.action !== "RUN" && data.action !== "SUBMIT") return;
+  send(data.action);
+  startVerdictWatch(data.action === "SUBMIT" ? "SUBMIT_RESULT" : "RUN_RESULT");
 });
 
 // After a Submit, watch the DOM for the verdict text. LeetCode renders the
