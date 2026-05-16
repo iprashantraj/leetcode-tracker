@@ -147,20 +147,31 @@ function startVerdictWatch(resultType) {
 // Most LeetCode regulars use these instead of clicking.
 // Dedupe — multiple listeners (window + document + editor) may fire for the
 // same physical keypress. We collapse events arriving within 250 ms.
+// LeetCode shortcut bindings can be customized per user. This config matches
+// the keys the LeetCode UI actually fires. Default LeetCode has Ctrl+Enter = Run
+// and no Submit shortcut; this user (and many others) customizes them.
+// TODO: expose this in an extension settings page so non-default users can
+// configure their own mappings.
+const SHORTCUT_MAP = [
+  // Submit: Ctrl/Cmd + Enter (or legacy Ctrl+Shift+Enter)
+  { match: e => e.key === "Enter" && (e.ctrlKey || e.metaKey), action: "SUBMIT" },
+  // Run: Ctrl/Cmd + '
+  { match: e => e.key === "'" && (e.ctrlKey || e.metaKey), action: "RUN" },
+];
+
 let lastShortcutAt = 0;
 function onKeyDown(e) {
-  if (e.key !== "Enter") return;
-  if (!(e.ctrlKey || e.metaKey)) return;
+  const hit = SHORTCUT_MAP.find(s => s.match(e));
+  if (!hit) return;
   const now = Date.now();
   if (now - lastShortcutAt < 250) {
     console.log("[tracker] shortcut deduped");
     return;
   }
   lastShortcutAt = now;
-  const which = e.shiftKey ? "SUBMIT" : "RUN";
-  console.log("[tracker] shortcut fired:", which, "slug:", currentSlug, "target:", e.target?.tagName);
-  if (e.shiftKey) { send("SUBMIT"); startVerdictWatch("SUBMIT_RESULT"); }
-  else { send("RUN"); startVerdictWatch("RUN_RESULT"); }
+  console.log("[tracker] shortcut fired:", hit.action, "slug:", currentSlug, "target:", e.target?.tagName);
+  send(hit.action);
+  startVerdictWatch(hit.action === "SUBMIT" ? "SUBMIT_RESULT" : "RUN_RESULT");
 }
 
 // LeetCode is an SPA — detect URL changes without a full page reload.
