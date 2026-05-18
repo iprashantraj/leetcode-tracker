@@ -42,7 +42,19 @@ async function saveEvents() {
 
 function attemptKey(id) { return `attempt:${id}`; }
 
+// Cap an open active interval at lastSeenAt if the page hasn't sent any event
+// in a while — usually means the tab was closed without a clean INACTIVE
+// firing. Without this, every sync tick would add 60s of phantom time.
+const STALE_PING_MS = 90_000;
+function capPhantom(live) {
+  if (live.activeSince && Date.now() - live.lastSeenAt > STALE_PING_MS) {
+    live.activeMs += Math.max(0, live.lastSeenAt - live.activeSince);
+    live.activeSince = null;
+  }
+}
+
 function liveToRecord(live) {
+  capPhantom(live);
   const activeMs = live.activeMs + (live.activeSince ? Date.now() - live.activeSince : 0);
   return {
     id: live.id,
@@ -174,8 +186,18 @@ async function handle(msg, _sender) {
 
 async function syncLiveAttempts() {
   await ensureLoaded();
+  // Auto-finalize attempts that have gone silent past the gap threshold —
+  // necessary because getOrStartAttempt's normal flush check only runs when
+  // a new event arrives. Tab closed = no new events = stuck "live" forever
+  // without this.
+  const now = Date.now();
+  for (const slug of Array.from(liveAttempts.keys())) {
+    const live = liveAttempts.get(slug);
+    if (live && now - live.lastSeenAt > SESSION_GAP_MS) {
+      await flushAttempt(slug);
+    }
+  }
   if (!(await isSignedIn())) return;
-  // Attempts first so events can reference an existing attempt id.
   if (liveAttempts.size) {
     const records = Array.from(liveAttempts.values()).map(liveToRecord);
     try {

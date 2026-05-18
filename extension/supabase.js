@@ -103,8 +103,13 @@ async function accessToken() {
     await setSession(merged);
     return data.access_token;
   } catch (e) {
-    // refresh failed — clear session
-    await setSession(null);
+    // Only clear the session on a real auth failure. Network blips, server
+    // 5xx, etc. should leave the session alone so we can retry next tick.
+    if (e.status === 401 || e.status === 403 || e.status === 400) {
+      await setSession(null);
+    } else {
+      console.warn("[tracker] token refresh transient failure:", e.message);
+    }
     return null;
   }
 }

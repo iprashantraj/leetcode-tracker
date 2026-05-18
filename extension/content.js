@@ -195,6 +195,10 @@ function init() {
   document.addEventListener("visibilitychange", onVisibilityChange);
   window.addEventListener("focus", onFocus);
   window.addEventListener("blur", onBlur);
+  // Tab is being torn down (close, navigate away, browser quit). Fire INACTIVE
+  // synchronously so the service worker doesn't keep an open active window.
+  window.addEventListener("pagehide", () => setActive(false, "pagehide"));
+  window.addEventListener("beforeunload", () => setActive(false, "beforeunload"));
   // Run/Submit detection now lives in the service worker (background.js)
   // via chrome.webRequest — works for any keyboard shortcut or button click.
   watchUrlChanges();
