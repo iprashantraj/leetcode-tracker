@@ -1,0 +1,4 @@
+- [Deferred features for LeetCodeTracker](project_deferred_features.md) — GraphQL-dependent features the user wants later (Easy/Med/Hard badges, topic skill chart, problem list, settings page)
+- [Scope constraints](project_scope_constraints.md) — target ~50 heavy users on Supabase free tier forever; avoid any design that breaks that budget
+- [User collaboration style](user_collaboration_style.md) — drive the browser when possible, be brutally honest, prefer focused scope, keep responses terse
+- [User's LeetCode shortcuts](user_leetcode_shortcuts.md) — Ctrl+' = Run, Ctrl+Enter = Submit (custom, not LeetCode defaults)
